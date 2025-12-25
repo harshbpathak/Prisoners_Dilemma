@@ -38,7 +38,7 @@ A competitive tournament platform for testing AI strategies in the Prisoner's Di
 
 **1. Clone the repository:**
 ```bash
-git clone https://github.com/CSP-UHS/Prisoners_Dilemma.git
+git clone https://github.com/harshbpathak/Prisoners_Dilemma.git
 cd Prisoners_Dilemma
 ```
 
@@ -440,8 +440,8 @@ This project is licensed under the MIT License - see LICENSE file for details.
 ## 🔗 Links
 
 - **Repository**: https://github.com/harshbpathak/Prisoners_Dilemma
-- **Issues**: https://github.com/CSP-UHS/Prisoners_Dilemma/issues
-- **Discussions**: https://github.com/CSP-UHS/Prisoners_Dilemma/discussions
+- **Issues**: https://github.com/harshbpathak/Prisoners_Dilemma/issues
+- **Discussions**: https://github.com/harshbpathak/Prisoners_Dilemma/discussions
 
 ## 👥 Authors
 
@@ -454,7 +454,6 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 - Inspired by Robert Axelrod's Prisoner's Dilemma tournaments
 - Built with FastAPI and React
-- Community feedback and contributions
 
 ---
 
