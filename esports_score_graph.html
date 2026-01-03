@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Score Progression - Esports Battle Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0e14;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Rajdhani', sans-serif;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            padding: 20px;
+        }
+
+        .graph-panel {
+            position: relative;
+            background: linear-gradient(135deg, 
+                rgba(10, 14, 20, 0.98) 0%, 
+                rgba(15, 22, 32, 0.95) 50%,
+                rgba(8, 12, 18, 0.98) 100%);
+            border-radius: 12px;
+            padding: 40px;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            box-shadow: 
+                0 0 60px rgba(0, 255, 255, 0.08),
+                0 0 120px rgba(0, 255, 255, 0.04),
+                inset 0 0 80px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+        }
+
+        /* Scanline overlay */
+        .graph-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Noise texture overlay */
+        .graph-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        /* Corner decorations */
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            z-index: 5;
+        }
+
+        .corner-tl {
+            top: 10px;
+            left: 10px;
+            border-top: 2px solid rgba(0, 255, 255, 0.6);
+            border-left: 2px solid rgba(0, 255, 255, 0.6);
+        }
+
+        .corner-tr {
+            top: 10px;
+            right: 10px;
+            border-top: 2px solid rgba(0, 255, 255, 0.6);
+            border-right: 2px solid rgba(0, 255, 255, 0.6);
+        }
+
+        .corner-bl {
+            bottom: 10px;
+            left: 10px;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.6);
+            border-left: 2px solid rgba(0, 255, 255, 0.6);
+        }
+
+        .corner-br {
+            bottom: 10px;
+            right: 10px;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.6);
+            border-right: 2px solid rgba(0, 255, 255, 0.6);
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .header-icon {
+            width: 28px;
+            height: 28px;
+            margin-right: 15px;
+            position: relative;
+        }
+
+        .header-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: #00ffff;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #00ffff, #00d4ff, #00ffff);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .live-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: #ff3366;
+            letter-spacing: 2px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff3366;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px #ff3366, 0 0 20px #ff3366;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .graph-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+            z-index: 5;
+        }
+
+        .graph-canvas {
+            position: absolute;
+            top: 0;
+            left: 50px;
+            right: 20px;
+            bottom: 40px;
+            background: linear-gradient(180deg, 
+                rgba(0, 20, 30, 0.3) 0%, 
+                rgba(0, 10, 20, 0.5) 100%);
+            border-left: 2px solid rgba(0, 255, 255, 0.4);
+            border-bottom: 2px solid rgba(255, 200, 0, 0.5);
+            box-shadow: 
+                inset 0 0 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        /* Grid lines */
+        .grid-horizontal, .grid-vertical {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.06);
+        }
+
+        .grid-horizontal .grid-line {
+            height: 1px;
+            left: 0;
+            right: 0;
+        }
+
+        .grid-vertical .grid-line {
+            width: 1px;
+            top: 0;
+            bottom: 0;
+        }
+
+        /* Y-axis labels */
+        .y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 40px;
+            width: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .y-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            color: rgba(0, 255, 255, 0.7);
+            text-align: right;
+            padding-right: 10px;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+
+        .y-axis-title {
+            position: absolute;
+            left: -5px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            color: rgba(0, 255, 255, 0.8);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            white-space: nowrap;
+        }
+
+        /* X-axis */
+        .x-axis {
+            position: absolute;
+            left: 50px;
+            right: 20px;
+            bottom: 0;
+            height: 40px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 15px;
+        }
+
+        .x-axis-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            color: rgba(255, 200, 0, 0.8);
+            text-shadow: 0 0 10px rgba(255, 200, 0, 0.5);
+        }
+
+        /* SVG Graph */
+        .graph-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* Glow filters */
+        .glow-cyan {
+            filter: drop-shadow(0 0 3px rgba(0, 255, 255, 1)) 
+                    drop-shadow(0 0 8px rgba(0, 255, 255, 0.8))
+                    drop-shadow(0 0 15px rgba(0, 255, 255, 0.5));
+        }
+
+        .glow-orange {
+            filter: drop-shadow(0 0 3px rgba(255, 140, 50, 1)) 
+                    drop-shadow(0 0 8px rgba(255, 140, 50, 0.8))
+                    drop-shadow(0 0 15px rgba(255, 140, 50, 0.5));
+        }
+
+        .glow-yellow {
+            filter: drop-shadow(0 0 4px rgba(200, 255, 0, 1)) 
+                    drop-shadow(0 0 10px rgba(200, 255, 0, 0.9))
+                    drop-shadow(0 0 20px rgba(200, 255, 0, 0.6));
+        }
+
+        /* Score line animations */
+        .score-line {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: drawLine 2s ease-out forwards;
+        }
+
+        @keyframes drawLine {
+            from { stroke-dashoffset: 2000; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .score-line-glow {
+            opacity: 0.4;
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Final score badges */
+        .final-score {
+            position: absolute;
+            padding: 4px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-radius: 4px;
+            animation: scorePopIn 0.5s ease-out 2s forwards;
+            opacity: 0;
+            transform: scale(0.5);
+            z-index: 20;
+        }
+
+        @keyframes scorePopIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .score-team1 {
+            background: linear-gradient(135deg, rgba(200, 255, 0, 0.2), rgba(200, 255, 0, 0.1));
+            border: 1px solid rgba(200, 255, 0, 0.8);
+            color: #c8ff00;
+            box-shadow: 0 0 20px rgba(200, 255, 0, 0.4), 0 0 40px rgba(200, 255, 0, 0.2);
+        }
+
+        .score-team2 {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.8);
+            color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), 0 0 40px rgba(0, 255, 255, 0.2);
+        }
+
+        .score-team3 {
+            background: linear-gradient(135deg, rgba(255, 140, 50, 0.2), rgba(255, 140, 50, 0.1));
+            border: 1px solid rgba(255, 140, 50, 0.8);
+            color: #ff8c32;
+            box-shadow: 0 0 20px rgba(255, 140, 50, 0.4), 0 0 40px rgba(255, 140, 50, 0.2);
+        }
+
+        /* Leader crown effect */
+        .leader-badge {
+            position: relative;
+        }
+
+        .leader-badge::before {
+            content: '👑';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            animation: crownFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes crownFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-3px); }
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        .legend-item.leader {
+            border-color: rgba(200, 255, 0, 0.5);
+            box-shadow: 0 0 20px rgba(200, 255, 0, 0.2);
+        }
+
+        .legend-line {
+            width: 40px;
+            height: 4px;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .legend-line::after {
+            content: '';
+            position: absolute;
+            top: -4px;
+            left: 0;
+            right: 0;
+            bottom: -4px;
+            border-radius: 4px;
+            opacity: 0.4;
+        }
+
+        .legend-line.team1 {
+            background: linear-gradient(90deg, #a8d400, #c8ff00);
+            box-shadow: 0 0 15px rgba(200, 255, 0, 0.8);
+        }
+
+        .legend-line.team2 {
+            background: linear-gradient(90deg, #00c8c8, #00ffff);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .legend-line.team3 {
+            background: linear-gradient(90deg, #e07020, #ff8c32);
+            box-shadow: 0 0 15px rgba(255, 140, 50, 0.8);
+        }
+
+        .legend-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .legend-icon.team1 {
+            background: linear-gradient(135deg, rgba(200, 255, 0, 0.3), rgba(200, 255, 0, 0.1));
+            border: 2px solid #c8ff00;
+            color: #c8ff00;
+            box-shadow: 0 0 10px rgba(200, 255, 0, 0.5);
+        }
+
+        .legend-icon.team2 {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 255, 0.1));
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .legend-icon.team3 {
+            background: linear-gradient(135deg, rgba(255, 140, 50, 0.3), rgba(255, 140, 50, 0.1));
+            border: 2px solid #ff8c32;
+            color: #ff8c32;
+            box-shadow: 0 0 10px rgba(255, 140, 50, 0.5);
+        }
+
+        .legend-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        .legend-text.team1 { color: #c8ff00; }
+        .legend-text.team2 { color: #00ffff; }
+        .legend-text.team3 { color: #ff8c32; }
+
+        .legend-score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .legend-score.team1 { 
+            color: #c8ff00; 
+            text-shadow: 0 0 10px rgba(200, 255, 0, 0.8);
+        }
+        .legend-score.team2 { 
+            color: #00ffff; 
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        .legend-score.team3 { 
+            color: #ff8c32; 
+            text-shadow: 0 0 10px rgba(255, 140, 50, 0.8);
+        }
+
+        /* Overtake flash effect */
+        .overtake-flash {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: flashPulse 1s ease-out forwards;
+        }
+
+        @keyframes flashPulse {
+            0% { transform: scale(0); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+
+        /* Victory particles */
+        .victory-particle {
+            position: absolute;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            pointer-events: none;
+            animation: particleFly 2s ease-out forwards;
+        }
+
+        @keyframes particleFly {
+            0% { opacity: 1; transform: translate(0, 0) scale(1); }
+            100% { opacity: 0; transform: translate(var(--tx), var(--ty)) scale(0); }
+        }
+
+        /* Ambient glow effects */
+        .ambient-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.15;
+            pointer-events: none;
+            animation: ambientPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes ambientPulse {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.1); }
+        }
+
+        .ambient-cyan {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.6), transparent);
+            top: 20%;
+            left: 10%;
+        }
+
+        .ambient-yellow {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(200, 255, 0, 0.6), transparent);
+            top: 10%;
+            right: 15%;
+            animation-delay: 1s;
+        }
+
+        .ambient-orange {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 140, 50, 0.4), transparent);
+            bottom: 20%;
+            left: 30%;
+            animation-delay: 2s;
+        }
+
+        /* Decorative star */
+        .deco-star {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            z-index: 5;
+        }
+
+        .deco-star svg {
+            fill: rgba(255, 255, 255, 0.3);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+            animation: starTwinkle 3s ease-in-out infinite;
+        }
+
+        @keyframes starTwinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1) rotate(0deg); }
+            50% { opacity: 0.6; transform: scale(1.1) rotate(5deg); }
+        }
+
+        /* Data points */
+        .data-point {
+            fill: transparent;
+            stroke-width: 2;
+            transition: all 0.3s ease;
+        }
+
+        .data-point:hover {
+            transform: scale(1.5);
+            fill: white;
+        }
+
+        /* Crossing highlight */
+        .crossing-highlight {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255, 255, 255, 0.4), transparent);
+            pointer-events: none;
+            animation: crossingPulse 2s ease-out infinite;
+        }
+
+        @keyframes crossingPulse {
+            0% { transform: scale(0.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="graph-panel">
+            <!-- Corner decorations -->
+            <div class="corner corner-tl"></div>
+            <div class="corner corner-tr"></div>
+            <div class="corner corner-bl"></div>
+            <div class="corner corner-br"></div>
+
+            <!-- Ambient glow effects -->
+            <div class="ambient-glow ambient-cyan"></div>
+            <div class="ambient-glow ambient-yellow"></div>
+            <div class="ambient-glow ambient-orange"></div>
+
+            <!-- Header -->
+            <div class="header">
+                <div class="header-icon">
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                    </svg>
+                </div>
+                <h1>LIVE SCORE PROGRESSION</h1>
+                <div class="live-indicator">
+                    <div class="live-dot"></div>
+                    LIVE
+                </div>
+            </div>
+
+            <!-- Graph Container -->
+            <div class="graph-container">
+                <!-- Y-Axis -->
+                <div class="y-axis-title">SCORE</div>
+                <div class="y-axis">
+                    <div class="y-label">600</div>
+                    <div class="y-label">500</div>
+                    <div class="y-label">400</div>
+                    <div class="y-label">300</div>
+                    <div class="y-label">200</div>
+                    <div class="y-label">100</div>
+                    <div class="y-label">0</div>
+                </div>
+
+                <!-- Graph Canvas -->
+                <div class="graph-canvas">
+                    <!-- Grid lines -->
+                    <div class="grid-horizontal">
+                        <div class="grid-line" style="top: 0%"></div>
+                        <div class="grid-line" style="top: 16.67%"></div>
+                        <div class="grid-line" style="top: 33.33%"></div>
+                        <div class="grid-line" style="top: 50%"></div>
+                        <div class="grid-line" style="top: 66.67%"></div>
+                        <div class="grid-line" style="top: 83.33%"></div>
+                    </div>
+                    <div class="grid-vertical">
+                        <div class="grid-line" style="left: 20%"></div>
+                        <div class="grid-line" style="left: 40%"></div>
+                        <div class="grid-line" style="left: 60%"></div>
+                        <div class="grid-line" style="left: 80%"></div>
+                    </div>
+
+                    <!-- SVG Graph -->
+                    <svg class="graph-svg" viewBox="0 0 1000 360" preserveAspectRatio="none">
+                        <defs>
+                            <!-- Gradient definitions -->
+                            <linearGradient id="gradYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#a8d400;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#c8ff00;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#e0ff40;stop-opacity:1" />
+                            </linearGradient>
+                            <linearGradient id="gradCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#008888;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#00d4d4;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
+                            </linearGradient>
+                            <linearGradient id="gradOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+                                <stop offset="0%" style="stop-color:#cc5500;stop-opacity:1" />
+                                <stop offset="50%" style="stop-color:#ff8c32;stop-opacity:1" />
+                                <stop offset="100%" style="stop-color:#ffaa55;stop-opacity:1" />
+                            </linearGradient>
+
+                            <!-- Glow filters -->
+                            <filter id="glowYellow" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="4" result="blur"/>
+                                <feFlood flood-color="#c8ff00" flood-opacity="0.8"/>
+                                <feComposite in2="blur" operator="in"/>
+                                <feMerge>
+                                    <feMergeNode/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                            <filter id="glowCyan" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="3" result="blur"/>
+                                <feFlood flood-color="#00ffff" flood-opacity="0.7"/>
+                                <feComposite in2="blur" operator="in"/>
+                                <feMerge>
+                                    <feMergeNode/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+                            <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%">
+                                <feGaussianBlur stdDeviation="3" result="blur"/>
+                                <feFlood flood-color="#ff8c32" flood-opacity="0.7"/>
+                                <feComposite in2="blur" operator="in"/>
+                                <feMerge>
+                                    <feMergeNode/>
+                                    <feMergeNode in="SourceGraphic"/>
+                                </feMerge>
+                            </filter>
+
+                            <!-- Animated dash -->
+                            <pattern id="energyPulse" x="0" y="0" width="20" height="1" patternUnits="userSpaceOnUse">
+                                <rect x="0" y="0" width="10" height="1" fill="white" opacity="0.3">
+                                    <animate attributeName="x" from="0" to="20" dur="0.5s" repeatCount="indefinite"/>
+                                </rect>
+                            </pattern>
+                        </defs>
+
+                        <!-- Background glow traces (wider, more diffuse) -->
+                        <polyline 
+                            points="0,360 80,330 160,320 240,310 320,260 400,240 480,220 560,180 640,160 720,130 800,90 880,50 960,20"
+                            fill="none"
+                            stroke="rgba(200, 255, 0, 0.15)"
+                            stroke-width="20"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="score-line-glow"/>
+                        
+                        <polyline 
+                            points="0,360 80,295 160,280 240,275 320,260 400,230 480,200 560,170 640,150 720,120 800,85 880,55 960,25"
+                            fill="none"
+                            stroke="rgba(0, 255, 255, 0.12)"
+                            stroke-width="18"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="score-line-glow"/>
+                        
+                        <polyline 
+                            points="0,360 80,310 160,295 240,285 320,260 400,235 480,210 560,185 640,155 720,130 800,100 880,75 960,55"
+                            fill="none"
+                            stroke="rgba(255, 140, 50, 0.12)"
+                            stroke-width="16"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            class="score-line-glow"/>
+
+                        <!-- Main score lines -->
+                        <!-- Team 3 (Orange) - Score: 571 -->
+                        <polyline 
+                            points="0,360 80,310 160,295 240,285 320,260 400,235 480,210 560,185 640,155 720,130 800,100 880,75 960,55"
+                            fill="none"
+                            stroke="url(#gradOrange)"
+                            stroke-width="3.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            filter="url(#glowOrange)"
+                            class="score-line"
+                            style="stroke-dasharray: 2000; stroke-dashoffset: 2000;"/>
+
+                        <!-- Team 2 (Cyan) - Score: 591 -->
+                        <polyline 
+                            points="0,360 80,295 160,280 240,275 320,260 400,230 480,200 560,170 640,150 720,120 800,85 880,55 960,25"
+                            fill="none"
+                            stroke="url(#gradCyan)"
+                            stroke-width="3.5"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            filter="url(#glowCyan)"
+                            class="score-line"
+                            style="stroke-dasharray: 2000; stroke-dashoffset: 2000; animation-delay: 0.2s;"/>
+
+                        <!-- Team 1 (Yellow/Green - LEADER) - Score: 591 -->
+                        <polyline 
+                            points="0,360 80,330 160,320 240,310 320,260 400,240 480,220 560,180 640,160 720,130 800,90 880,50 960,20"
+                            fill="none"
+                            stroke="url(#gradYellow)"
+                            stroke-width="4"
+                            stroke-linecap="round"
+                            stroke-linejoin="round"
+                            filter="url(#glowYellow)"
+                            class="score-line"
+                            style="stroke-dasharray: 2000; stroke-dashoffset: 2000; animation-delay: 0.4s;"/>
+
+                        <!-- End points with pulsing effect -->
+                        <g class="end-points">
+                            <!-- Team 1 endpoint -->
+                            <circle cx="960" cy="20" r="6" fill="#c8ff00" opacity="0">
+                                <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2s" fill="freeze"/>
+                                <animate attributeName="r" values="6;8;6" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="960" cy="20" r="12" fill="none" stroke="#c8ff00" stroke-width="2" opacity="0">
+                                <animate attributeName="opacity" from="0" to="0.5" dur="0.5s" begin="2s" fill="freeze"/>
+                                <animate attributeName="r" values="12;18;12" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                                <animate attributeName="opacity" values="0.5;0.2;0.5" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                            </circle>
+
+                            <!-- Team 2 endpoint -->
+                            <circle cx="960" cy="25" r="5" fill="#00ffff" opacity="0">
+                                <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2.2s" fill="freeze"/>
+                                <animate attributeName="r" values="5;7;5" dur="1.5s" begin="2.2s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="960" cy="25" r="10" fill="none" stroke="#00ffff" stroke-width="1.5" opacity="0">
+                                <animate attributeName="opacity" from="0" to="0.4" dur="0.5s" begin="2.2s" fill="freeze"/>
+                                <animate attributeName="r" values="10;15;10" dur="1.5s" begin="2.2s" repeatCount="indefinite"/>
+                            </circle>
+
+                            <!-- Team 3 endpoint -->
+                            <circle cx="960" cy="55" r="4" fill="#ff8c32" opacity="0">
+                                <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2.4s" fill="freeze"/>
+                                <animate attributeName="r" values="4;6;4" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                            </circle>
+                            <circle cx="960" cy="55" r="8" fill="none" stroke="#ff8c32" stroke-width="1.5" opacity="0">
+                                <animate attributeName="opacity" from="0" to="0.4" dur="0.5s" begin="2.4s" fill="freeze"/>
+                                <animate attributeName="r" values="8;12;8" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                            </circle>
+                        </g>
+
+                        <!-- Overtake highlight points -->
+                        <g class="overtake-points">
+                            <!-- Point where Team 1 overtakes others around x=400 -->
+                            <circle cx="480" cy="220" r="0" fill="transparent">
+                                <animate attributeName="r" values="0;25;0" dur="2s" begin="1.2s" fill="freeze"/>
+                            </circle>
+                            <circle cx="480" cy="220" r="0" fill="rgba(200, 255, 0, 0.3)">
+                                <animate attributeName="r" values="0;15;0" dur="1.5s" begin="1.2s" fill="freeze"/>
+                            </circle>
+                        </g>
+                    </svg>
+
+                    <!-- Final score badges -->
+                    <div class="final-score score-team1 leader-badge" style="right: -50px; top: calc(5.5% - 12px);">591</div>
+                    <div class="final-score score-team2" style="right: -50px; top: calc(7% + 8px);">591</div>
+                    <div class="final-score score-team3" style="right: -50px; top: calc(15% + 5px);">571</div>
+                </div>
+
+                <!-- X-Axis -->
+                <div class="x-axis">
+                    <span class="x-axis-title">TIME</span>
+                </div>
+            </div>
+
+            <!-- Legend -->
+            <div class="legend">
+                <div class="legend-item leader">
+                    <div class="legend-icon team1">1</div>
+                    <div class="legend-line team1"></div>
+                    <span class="legend-text team1">#1 A</span>
+                    <span class="legend-score team1">591</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon team2">2</div>
+                    <div class="legend-line team2"></div>
+                    <span class="legend-text team2">#2 B</span>
+                    <span class="legend-score team2">591</span>
+                </div>
+                <div class="legend-item">
+                    <div class="legend-icon team3">3</div>
+                    <div class="legend-line team3"></div>
+                    <span class="legend-text team3">#3 O</span>
+                    <span class="legend-score team3">571</span>
+                </div>
+            </div>
+
+            <!-- Decorative star -->
+            <div class="deco-star">
+                <svg viewBox="0 0 24 24">
+                    <polygon points="12,2 15,9 22,9 17,14 19,22 12,18 5,22 7,14 2,9 9,9"/>
+                </svg>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Add dynamic particles on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            const graphCanvas = document.querySelector('.graph-canvas');
+            
+            // Create victory particles at final positions after animation
+            setTimeout(() => {
+                createVictoryParticles(graphCanvas, '95%', '5%', '#c8ff00');
+            }, 2500);
+
+            // Add subtle energy pulse to lines
+            const lines = document.querySelectorAll('.score-line');
+            lines.forEach((line, index) => {
+                line.style.animationDelay = `${index * 0.15}s`;
+            });
+        });
+
+        function createVictoryParticles(container, x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'victory-particle';
+                particle.style.left = x;
+                particle.style.top = y;
+                particle.style.background = color;
+                particle.style.boxShadow = `0 0 6px ${color}`;
+                
+                const angle = (Math.PI * 2 / 12) * i;
+                const distance = 30 + Math.random() * 40;
+                particle.style.setProperty('--tx', `${Math.cos(angle) * distance}px`);
+                particle.style.setProperty('--ty', `${Math.sin(angle) * distance}px`);
+                
+                container.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 2000);
+            }
+        }
+
+        // Simulate live updates (for demo purposes)
+        function simulateLiveUpdate() {
+            const indicator = document.querySelector('.live-dot');
+            indicator.style.animation = 'none';
+            indicator.offsetHeight; // Trigger reflow
+            indicator.style.animation = 'pulse 0.3s ease-out 3';
+        }
+
+        // Call periodically for live feel
+        setInterval(simulateLiveUpdate, 5000);
+    </script>
+</body>
+</html>

@@ -9,8 +9,63 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import Leaderboard from '../components/app/Leaderboard';
 import useWebSocket from "@/hooks/useWebSocket";
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8000' ;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 const API = `${BACKEND_URL}/api`;
+
+// Built-in strategy templates (3-player format)
+const STRATEGY_TEMPLATES = [
+  {
+    name: 'Tit for Tat',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    # Cooperate first, then cooperate only if BOTH opponents cooperated
+    if not opponent1_history:
+        return 'C'
+    if opponent1_history[-1] == 'C' and opponent2_history[-1] == 'C':
+        return 'C'
+    return 'D'`
+  },
+  {
+    name: 'Grudger',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    # Cooperate until any opponent defects, then always defect
+    if 'D' in opponent1_history or 'D' in opponent2_history:
+        return 'D'
+    return 'C'`
+  },
+  {
+    name: 'Pavlov',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    # Win-Stay, Lose-Shift: Switch if we got a bad outcome
+    if not my_history:
+        return 'C'
+    # Good outcome = both opponents cooperated last round
+    if opponent1_history[-1] == 'C' and opponent2_history[-1] == 'C':
+        return my_history[-1]
+    # Bad outcome, switch
+    return 'D' if my_history[-1] == 'C' else 'C'`
+  },
+  {
+    name: 'Majority Rules',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    # Copy what majority did last round
+    if not opponent1_history:
+        return 'C'
+    last_moves = [opponent1_history[-1], opponent2_history[-1]]
+    if last_moves.count('C') >= 1:
+        return 'C'
+    return 'D'`
+  },
+  {
+    name: 'Always Cooperate',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    return 'C'`
+  },
+  {
+    name: 'Always Defect',
+    code: `def strategy(opponent1_history, opponent2_history, my_history):
+    return 'D'`
+  },
+];
 
 const AdminPanel = () => {
   const navigate = useNavigate();
@@ -33,6 +88,8 @@ const AdminPanel = () => {
   const [newTeam, setNewTeam] = useState({ name: '', strategy_code: '' });
   const [editingTeam, setEditingTeam] = useState(null);
   const [validationResult, setValidationResult] = useState(null);
+
+
 
   const adminHeaders = { 'X-Admin-Password': password };
 
@@ -80,7 +137,9 @@ const AdminPanel = () => {
       setTournament(statusRes.data);
       setLeaderboard(lbRes.data);
       setSampleStrategies(strategiesRes.data);
-      
+
+
+
       const m = matrixRes.data;
       setPayoffMatrix({
         c_2coop: m.C[2],
@@ -171,6 +230,7 @@ const AdminPanel = () => {
     try {
       await axios.post(`${API}/tournament/start`, {}, { headers: adminHeaders });
       toast.success('Tournament started!');
+
       fetchAllData();
     } catch (error) {
       toast.error(error.response?.data?.detail || 'Failed to start');
@@ -202,6 +262,7 @@ const AdminPanel = () => {
     try {
       await axios.post(`${API}/tournament/reset`, {}, { headers: adminHeaders });
       toast.success('Tournament reset');
+
       fetchAllData();
     } catch (error) {
       toast.error('Failed to reset');
@@ -240,7 +301,7 @@ const AdminPanel = () => {
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-8" data-testid="admin-login">
-        <motion.div 
+        <motion.div
           className="cyber-card p-8 w-full max-w-md"
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -299,18 +360,17 @@ const AdminPanel = () => {
           TOURNAMENT CONTROL
         </h2>
         <div className="flex flex-wrap gap-4 items-center">
-          <span className={`px-4 py-2 font-mono text-sm rounded ${
-            tournament.status === 'running' ? 'bg-green-500/20 text-green-400' :
+          <span className={`px-4 py-2 font-mono text-sm rounded ${tournament.status === 'running' ? 'bg-green-500/20 text-green-400' :
             tournament.status === 'paused' ? 'bg-yellow-500/20 text-yellow-400' :
-            tournament.status === 'finished' ? 'bg-blue-500/20 text-blue-400' :
-            'bg-gray-500/20 text-gray-400'
-          }`}>
+              tournament.status === 'finished' ? 'bg-blue-500/20 text-blue-400' :
+                'bg-gray-500/20 text-gray-400'
+            }`}>
             STATUS: {tournament.status?.toUpperCase()}
           </span>
           <span className="font-mono text-muted-foreground">
             {teams.length} TEAMS
           </span>
-          
+
           <div className="flex gap-2 ml-auto">
             {tournament.status === 'idle' && (
               <button onClick={startTournament} className="cyber-btn flex items-center gap-2" data-testid="start-tournament-btn">
@@ -343,6 +403,8 @@ const AdminPanel = () => {
         </div>
       </div>
 
+
+
       {/* Main Tabs */}
       <Tabs defaultValue="teams" className="space-y-6">
         <TabsList className="bg-muted p-1">
@@ -369,7 +431,7 @@ const AdminPanel = () => {
                 <Plus className="w-5 h-5" />
                 ADD NEW TEAM
               </h3>
-              
+
               <div className="space-y-4">
                 <input
                   type="text"
@@ -379,7 +441,7 @@ const AdminPanel = () => {
                   className="cyber-input w-full"
                   data-testid="new-team-name"
                 />
-                
+
                 <div>
                   <label className="block text-sm text-muted-foreground mb-2">
                     STRATEGY CODE
@@ -393,18 +455,29 @@ const AdminPanel = () => {
                   />
                 </div>
 
-                {/* Sample strategies */}
-                <div className="flex flex-wrap gap-2">
+                {/* Strategy Templates */}
+                <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">Templates:</span>
-                  {sampleStrategies.map((s, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setNewTeam({ ...newTeam, strategy_code: s.code })}
-                      className="text-xs px-2 py-1 bg-accent hover:bg-primary hover:text-black transition-colors rounded"
-                    >
-                      {s.name}
-                    </button>
-                  ))}
+                  <div className="flex flex-wrap gap-2">
+                    {STRATEGY_TEMPLATES.map((s, idx) => (
+                      <button
+                        key={`builtin-${idx}`}
+                        onClick={() => setNewTeam({ ...newTeam, strategy_code: s.code })}
+                        className="text-xs px-3 py-1.5 bg-accent hover:bg-primary hover:text-black transition-colors rounded border border-primary/30"
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                    {sampleStrategies.map((s, idx) => (
+                      <button
+                        key={`api-${idx}`}
+                        onClick={() => setNewTeam({ ...newTeam, strategy_code: s.code })}
+                        className="text-xs px-3 py-1.5 bg-accent hover:bg-primary hover:text-black transition-colors rounded border border-cyan-500/30"
+                      >
+                        {s.name}
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
                 {validationResult && (
@@ -418,8 +491,8 @@ const AdminPanel = () => {
                     <Target className="w-4 h-4 mr-2 inline" />
                     VALIDATE
                   </button>
-                  <button 
-                    onClick={createTeam} 
+                  <button
+                    onClick={createTeam}
                     className="cyber-btn flex-1"
                     disabled={!newTeam.name || !newTeam.strategy_code}
                     data-testid="create-team-btn"
@@ -437,7 +510,7 @@ const AdminPanel = () => {
                 <Users className="w-5 h-5" />
                 REGISTERED TEAMS ({teams.length})
               </h3>
-              
+
               <ScrollArea className="h-[400px]">
                 <div className="space-y-3">
                   {teams.map((team) => (
@@ -480,14 +553,14 @@ const AdminPanel = () => {
                             </div>
                           </div>
                           <div className="flex gap-2">
-                            <button 
+                            <button
                               onClick={() => setEditingTeam(team)}
                               className="p-2 hover:bg-primary/20 rounded transition-colors"
                               data-testid={`edit-team-${team.id}`}
                             >
                               <Edit className="w-4 h-4" />
                             </button>
-                            <button 
+                            <button
                               onClick={() => deleteTeam(team.id)}
                               className="p-2 hover:bg-destructive/20 rounded transition-colors"
                               data-testid={`delete-team-${team.id}`}
@@ -522,7 +595,7 @@ const AdminPanel = () => {
               <Settings className="w-5 h-5" />
               PAYOFF MATRIX
             </h3>
-            
+
             <div className="overflow-x-auto">
               <table className="cyber-table mb-6">
                 <thead>
@@ -624,5 +697,3 @@ const AdminPanel = () => {
   );
 };
 export default AdminPanel;
-
-

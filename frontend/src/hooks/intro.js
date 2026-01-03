@@ -1,4 +1,4 @@
-import { useRef } from "react";
+import { useRef, useCallback } from "react";
 import { gsap } from "gsap";
 
 const ZoomIntro = ({
@@ -10,7 +10,7 @@ const ZoomIntro = ({
   const elementRef = useRef(null);
   const timelineRef = useRef(null);
 
-  const playIntro = () => {
+  const playIntro = useCallback(() => {
     return new Promise((resolve) => {
       const el = elementRef.current;
       if (!el) {
@@ -57,7 +57,7 @@ const ZoomIntro = ({
           ease,
         });
     });
-  };
+  }, [scale, duration, hold, ease]);
 
   return { elementRef, playIntro };
 };
