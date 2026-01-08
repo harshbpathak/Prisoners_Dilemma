@@ -237,12 +237,10 @@ const AudienceView = () => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.4 }}
       >
-        <div className="cyber-card p-6">
-          <ScoreProgressChart
-            graphData={graphData}
-            leaderboard={leaderboard}
-          />
-        </div>
+        <ScoreProgressChart
+          graphData={graphData}
+          leaderboard={leaderboard}
+        />
       </motion.div>
 
       {/* Footer */}
