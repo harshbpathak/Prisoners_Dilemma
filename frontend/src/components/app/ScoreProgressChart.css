@@ -815,17 +815,40 @@
     max-width: none;
     border-radius: 0;
     z-index: 9999;
-    padding: 40px;
-    overflow-y: auto;
+    padding: 20px 30px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
 }
 
-.esports-graph-panel.fullscreen .esports-graph-container {
-    height: 50vh;
-    min-height: 400px;
+.esports-graph-panel.fullscreen .esports-header {
+    flex-shrink: 0;
+    margin-bottom: 10px;
 }
 
 .esports-graph-panel.fullscreen .esports-main-grid {
+    flex: 1;
+    min-height: 0;
     height: auto;
+}
+
+.esports-graph-panel.fullscreen .esports-graph-container {
+    height: 100%;
+    min-height: 200px;
+    margin-bottom: 10px;
+}
+
+.esports-graph-panel.fullscreen .esports-legend {
+    flex-shrink: 0;
+    padding: 8px 0;
+}
+
+.esports-graph-panel.fullscreen .esports-fullscreen-match-visualizer {
+    flex-shrink: 0;
+    margin-top: 10px;
+    padding-top: 10px;
+    max-height: 35vh;
+    overflow: hidden;
 }
 
 /* Fullscreen Button */
@@ -1233,5 +1256,65 @@
         flex-direction: column;
         gap: 2px;
         align-items: flex-start;
+    }
+}
+
+/* ========================================
+   FULLSCREEN MATCH VISUALIZER STYLES
+   ======================================== */
+
+.esports-fullscreen-match-visualizer {
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 1px solid rgba(0, 255, 255, 0.2);
+    position: relative;
+    z-index: 5;
+}
+
+.esports-fullscreen-match-visualizer .cyber-card {
+    background: linear-gradient(135deg,
+            rgba(0, 20, 30, 0.7) 0%,
+            rgba(0, 10, 20, 0.9) 100%);
+    border: 1px solid rgba(0, 255, 255, 0.25);
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 15px 25px;
+}
+
+.esports-fullscreen-match-visualizer .cyber-card:hover {
+    border-color: rgba(0, 255, 255, 0.4);
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.15);
+}
+
+/* Compact styles for match visualizer in fullscreen */
+.esports-fullscreen-match-visualizer .grid-cols-3 {
+    gap: 1rem;
+}
+
+.esports-fullscreen-match-visualizer .text-5xl {
+    font-size: 2.5rem;
+}
+
+.esports-fullscreen-match-visualizer .mb-8 {
+    margin-bottom: 0.75rem;
+}
+
+.esports-fullscreen-match-visualizer .mb-6 {
+    margin-bottom: 0.5rem;
+}
+
+.esports-fullscreen-match-visualizer .mb-3 {
+    margin-bottom: 0.5rem;
+}
+
+/* Responsive adjustments for fullscreen match visualizer */
+@media (max-width: 768px) {
+    .esports-fullscreen-match-visualizer {
+        margin-top: 10px;
+        padding-top: 10px;
+    }
+
+    .esports-fullscreen-match-visualizer .cyber-card {
+        padding: 10px;
     }
 }

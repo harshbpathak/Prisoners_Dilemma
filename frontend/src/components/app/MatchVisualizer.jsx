@@ -3,7 +3,9 @@ import { motion } from "framer-motion";
 import { Swords } from "lucide-react";
 import gsap from "gsap";
 
-const MatchVisualizer = ({ match, progress }) => {
+const MatchVisualizer = ({ match, progress, slowMode = false }) => {
+  // Animation duration multiplier for slow mode
+  const durationMultiplier = slowMode ? 4 : 1;
   const teamAScoreRef = useRef(null);
   const teamBScoreRef = useRef(null);
   const teamCScoreRef = useRef(null);
@@ -18,10 +20,10 @@ const MatchVisualizer = ({ match, progress }) => {
       gsap.fromTo(
         containerRef.current,
         { scale: 0.9, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" }
+        { scale: 1, opacity: 1, duration: 0.6 * durationMultiplier, ease: "back.out(1.7)" }
       );
     }
-  }, [match]);
+  }, [match, durationMultiplier]);
 
   useEffect(() => {
     if (progress) {
@@ -30,21 +32,21 @@ const MatchVisualizer = ({ match, progress }) => {
         gsap.fromTo(
           teamAScoreRef.current,
           { scale: 1.3, color: "#00FF94" },
-          { scale: 1, color: "#00FF94", duration: 0.5, ease: "elastic.out(1, 0.5)" }
+          { scale: 1, color: "#00FF94", duration: 0.5 * durationMultiplier, ease: "elastic.out(1, 0.5)" }
         );
       }
       if (teamBScoreRef.current) {
         gsap.fromTo(
           teamBScoreRef.current,
           { scale: 1.3, color: "#00FF94" },
-          { scale: 1, color: "#00FF94", duration: 0.5, ease: "elastic.out(1, 0.5)" }
+          { scale: 1, color: "#00FF94", duration: 0.5 * durationMultiplier, ease: "elastic.out(1, 0.5)" }
         );
       }
       if (teamCScoreRef.current) {
         gsap.fromTo(
           teamCScoreRef.current,
           { scale: 1.3, color: "#00FF94" },
-          { scale: 1, color: "#00FF94", duration: 0.5, ease: "elastic.out(1, 0.5)" }
+          { scale: 1, color: "#00FF94", duration: 0.5 * durationMultiplier, ease: "elastic.out(1, 0.5)" }
         );
       }
 
@@ -55,12 +57,12 @@ const MatchVisualizer = ({ match, progress }) => {
           gsap.fromTo(
             ref.current,
             { scale: 0, rotate: -180 },
-            { scale: 1, rotate: 0, duration: 0.6, ease: "back.out(2)" }
+            { scale: 1, rotate: 0, duration: 0.6 * durationMultiplier, ease: "back.out(2)" }
           );
         }
       });
     }
-  }, [progress]);
+  }, [progress, durationMultiplier]);
 
   if (!match) {
     return (
@@ -74,7 +76,7 @@ const MatchVisualizer = ({ match, progress }) => {
   }
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className="cyber-card p-8"
       data-testid="match-visualizer"
@@ -89,28 +91,28 @@ const MatchVisualizer = ({ match, progress }) => {
       <div className="grid grid-cols-3 gap-4 items-start mb-8">
         {/* Team A */}
         <div className="text-center">
-          <motion.h3 
+          <motion.h3
             className="font-display text-2xl mb-3 truncate"
-            animate={{ 
+            animate={{
               color: progress?.team_a?.last_move === 'C' ? '#00FF94' : '#FF0055',
-              textShadow: progress?.team_a?.last_move === 'C' 
-                ? '0 0 20px #00FF94' 
+              textShadow: progress?.team_a?.last_move === 'C'
+                ? '0 0 20px #00FF94'
                 : '0 0 20px #FF0055'
             }}
             transition={{ duration: 0.3 }}
           >
             {progress?.team_a?.name || match.team_a}
           </motion.h3>
-          <div 
+          <div
             ref={teamAScoreRef}
-            className="text-5xl font-display font-black neon-green mb-3" 
+            className="text-5xl font-display font-black neon-green mb-3"
             data-testid="team-a-score"
           >
             {progress?.team_a?.score || 0}
           </div>
           {progress && (
             <div className="flex flex-col items-center gap-2">
-              <span 
+              <span
                 ref={teamAMoveRef}
                 className={`move-icon text-2xl ${progress.team_a?.last_move === 'C' ? 'move-c' : 'move-d'}`}
               >
@@ -125,28 +127,28 @@ const MatchVisualizer = ({ match, progress }) => {
 
         {/* Team B */}
         <div className="text-center">
-          <motion.h3 
+          <motion.h3
             className="font-display text-2xl mb-3 truncate"
-            animate={{ 
+            animate={{
               color: progress?.team_b?.last_move === 'C' ? '#00FF94' : '#FF0055',
-              textShadow: progress?.team_b?.last_move === 'C' 
-                ? '0 0 20px #00FF94' 
+              textShadow: progress?.team_b?.last_move === 'C'
+                ? '0 0 20px #00FF94'
                 : '0 0 20px #FF0055'
             }}
             transition={{ duration: 0.3 }}
           >
             {progress?.team_b?.name || match.team_b}
           </motion.h3>
-          <div 
+          <div
             ref={teamBScoreRef}
-            className="text-5xl font-display font-black neon-green mb-3" 
+            className="text-5xl font-display font-black neon-green mb-3"
             data-testid="team-b-score"
           >
             {progress?.team_b?.score || 0}
           </div>
           {progress && (
             <div className="flex flex-col items-center gap-2">
-              <span 
+              <span
                 ref={teamBMoveRef}
                 className={`move-icon text-2xl ${progress.team_b?.last_move === 'C' ? 'move-c' : 'move-d'}`}
               >
@@ -161,28 +163,28 @@ const MatchVisualizer = ({ match, progress }) => {
 
         {/* Team C */}
         <div className="text-center">
-          <motion.h3 
+          <motion.h3
             className="font-display text-2xl mb-3 truncate"
-            animate={{ 
+            animate={{
               color: progress?.team_c?.last_move === 'C' ? '#00FF94' : '#FF0055',
-              textShadow: progress?.team_c?.last_move === 'C' 
-                ? '0 0 20px #00FF94' 
+              textShadow: progress?.team_c?.last_move === 'C'
+                ? '0 0 20px #00FF94'
                 : '0 0 20px #FF0055'
             }}
             transition={{ duration: 0.3 }}
           >
             {progress?.team_c?.name || match.team_c}
           </motion.h3>
-          <div 
+          <div
             ref={teamCScoreRef}
-            className="text-5xl font-display font-black neon-green mb-3" 
+            className="text-5xl font-display font-black neon-green mb-3"
             data-testid="team-c-score"
           >
             {progress?.team_c?.score || 0}
           </div>
           {progress && (
             <div className="flex flex-col items-center gap-2">
-              <span 
+              <span
                 ref={teamCMoveRef}
                 className={`move-icon text-2xl ${progress.team_c?.last_move === 'C' ? 'move-c' : 'move-d'}`}
               >
@@ -198,13 +200,13 @@ const MatchVisualizer = ({ match, progress }) => {
 
       {/* VS Indicator */}
       <div className="text-center mb-6">
-        <motion.div 
+        <motion.div
           className="text-4xl font-display font-black"
-          animate={{ 
+          animate={{
             scale: [1, 1.1, 1],
             opacity: [0.7, 1, 0.7]
           }}
-          transition={{ 
+          transition={{
             duration: 2,
             repeat: Infinity,
             ease: "easeInOut"
@@ -221,7 +223,7 @@ const MatchVisualizer = ({ match, progress }) => {
           <span>{progress?.total_rounds || 100} TOTAL</span>
         </div>
         <div className="cyber-progress">
-          <motion.div 
+          <motion.div
             className="cyber-progress-bar bg-primary"
             initial={{ width: 0 }}
             animate={{ width: `${((progress?.round || 0) / (progress?.total_rounds || 100)) * 100}%` }}

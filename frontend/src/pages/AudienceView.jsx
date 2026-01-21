@@ -240,6 +240,8 @@ const AudienceView = () => {
         <ScoreProgressChart
           graphData={graphData}
           leaderboard={leaderboard}
+          currentMatch={currentMatch}
+          matchProgress={matchProgress}
         />
       </motion.div>
 

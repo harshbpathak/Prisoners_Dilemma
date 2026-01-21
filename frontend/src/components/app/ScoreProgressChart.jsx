@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TrendingUp, Activity, Maximize2, Minimize2 } from 'lucide-react';
+import MatchVisualizer from './MatchVisualizer';
 import './ScoreProgressChart.css';
 
 // Color palette for teams (esports theme)
@@ -54,7 +55,7 @@ const getTeamColor = (index) => {
     return TEAM_COLORS[colorKeys[index % colorKeys.length]];
 };
 
-const ScoreProgressChart = ({ graphData, leaderboard }) => {
+const ScoreProgressChart = ({ graphData, leaderboard, currentMatch, matchProgress }) => {
     const svgRef = useRef(null);
     const containerRef = useRef(null);
     const panelRef = useRef(null);
@@ -685,6 +686,18 @@ const ScoreProgressChart = ({ graphData, leaderboard }) => {
                     );
                 })}
             </div>
+
+            {/* Match Visualizer - Only shown in fullscreen mode */}
+            {isFullscreen && (
+                <motion.div
+                    className="esports-fullscreen-match-visualizer"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.2 }}
+                >
+                    <MatchVisualizer match={currentMatch} progress={matchProgress} slowMode={true} />
+                </motion.div>
+            )}
 
             {/* Decorative star */}
             <div className="esports-deco-star">
