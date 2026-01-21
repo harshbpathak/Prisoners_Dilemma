@@ -1,0 +1,1695 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Score Progression - Esports Battle Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700;800;900&family=Rajdhani:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0e14;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Rajdhani', sans-serif;
+            overflow-x: hidden;
+            padding: 20px 0;
+            position: relative;
+        }
+
+        /* Animated background particles */
+        .bg-particles {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .particle {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: rgba(0, 255, 255, 0.5);
+            border-radius: 50%;
+            animation: floatParticle 20s infinite linear;
+        }
+
+        @keyframes floatParticle {
+            0% {
+                transform: translateY(100vh) translateX(0) scale(0);
+                opacity: 0;
+            }
+            10% {
+                opacity: 1;
+            }
+            90% {
+                opacity: 1;
+            }
+            100% {
+                transform: translateY(-100vh) translateX(100px) scale(1);
+                opacity: 0;
+            }
+        }
+
+        /* Lightning effect */
+        .lightning-flash {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: radial-gradient(circle at var(--x, 50%) var(--y, 50%), 
+                rgba(0, 255, 255, 0.3) 0%, 
+                transparent 50%);
+            pointer-events: none;
+            opacity: 0;
+            z-index: 1;
+            animation: lightning 8s infinite;
+        }
+
+        @keyframes lightning {
+            0%, 100% { opacity: 0; }
+            48%, 52% { opacity: 0; }
+            49%, 51% { opacity: 1; }
+            49.5%, 50.5% { opacity: 0.5; }
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1600px;
+            padding: 20px;
+            position: relative;
+            z-index: 2;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr 420px;
+            gap: 20px;
+            margin-bottom: 20px;
+            animation: gridFadeIn 1s ease-out;
+        }
+
+        @keyframes gridFadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @media (max-width: 1200px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .graph-panel, .stats-panel {
+            position: relative;
+            background: linear-gradient(135deg, 
+                rgba(10, 14, 20, 0.98) 0%, 
+                rgba(15, 22, 32, 0.95) 50%,
+                rgba(8, 12, 18, 0.98) 100%);
+            border-radius: 12px;
+            padding: 40px;
+            border: 1px solid rgba(0, 255, 255, 0.15);
+            box-shadow: 
+                0 0 60px rgba(0, 255, 255, 0.08),
+                0 0 120px rgba(0, 255, 255, 0.04),
+                inset 0 0 80px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .graph-panel:hover, .stats-panel:hover {
+            border-color: rgba(0, 255, 255, 0.4);
+            box-shadow: 
+                0 0 80px rgba(0, 255, 255, 0.15),
+                0 0 140px rgba(0, 255, 255, 0.08),
+                inset 0 0 80px rgba(0, 0, 0, 0.5);
+            transform: translateY(-5px);
+        }
+
+        .stats-panel {
+            padding: 30px;
+        }
+
+        /* Scanline overlay */
+        .graph-panel::before, .stats-panel::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: repeating-linear-gradient(
+                0deg,
+                transparent,
+                transparent 2px,
+                rgba(0, 0, 0, 0.1) 2px,
+                rgba(0, 0, 0, 0.1) 4px
+            );
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Noise texture overlay */
+        .graph-panel::after, .stats-panel::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+            opacity: 0.03;
+            pointer-events: none;
+            z-index: 11;
+        }
+
+        /* Corner decorations */
+        .corner {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            z-index: 5;
+            transition: all 0.3s ease;
+        }
+
+        .graph-panel:hover .corner,
+        .stats-panel:hover .corner {
+            width: 40px;
+            height: 40px;
+        }
+
+        .corner-tl {
+            top: 10px;
+            left: 10px;
+            border-top: 2px solid rgba(0, 255, 255, 0.6);
+            border-left: 2px solid rgba(0, 255, 255, 0.6);
+            animation: cornerPulse 3s infinite;
+        }
+
+        .corner-tr {
+            top: 10px;
+            right: 10px;
+            border-top: 2px solid rgba(0, 255, 255, 0.6);
+            border-right: 2px solid rgba(0, 255, 255, 0.6);
+            animation: cornerPulse 3s infinite 0.75s;
+        }
+
+        .corner-bl {
+            bottom: 10px;
+            left: 10px;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.6);
+            border-left: 2px solid rgba(0, 255, 255, 0.6);
+            animation: cornerPulse 3s infinite 1.5s;
+        }
+
+        .corner-br {
+            bottom: 10px;
+            right: 10px;
+            border-bottom: 2px solid rgba(0, 255, 255, 0.6);
+            border-right: 2px solid rgba(0, 255, 255, 0.6);
+            animation: cornerPulse 3s infinite 2.25s;
+        }
+
+        @keyframes cornerPulse {
+            0%, 100% {
+                opacity: 0.6;
+                filter: drop-shadow(0 0 2px rgba(0, 255, 255, 0.6));
+            }
+            50% {
+                opacity: 1;
+                filter: drop-shadow(0 0 8px rgba(0, 255, 255, 1));
+            }
+        }
+
+        .header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .header-icon {
+            width: 28px;
+            height: 28px;
+            margin-right: 15px;
+            position: relative;
+        }
+
+        .header-icon svg {
+            width: 100%;
+            height: 100%;
+            fill: none;
+            stroke: #00ffff;
+            stroke-width: 1.5;
+            filter: drop-shadow(0 0 8px rgba(0, 255, 255, 0.8));
+        }
+
+        .header h1 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+            letter-spacing: 4px;
+            background: linear-gradient(90deg, #00ffff, #00d4ff, #00ffff);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 30px rgba(0, 255, 255, 0.5);
+            animation: shimmer 3s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .live-indicator {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.75rem;
+            color: #ff3366;
+            letter-spacing: 2px;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff3366;
+            border-radius: 50%;
+            animation: pulse 1.5s ease-in-out infinite;
+            box-shadow: 0 0 10px #ff3366, 0 0 20px #ff3366;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+
+        .graph-container {
+            position: relative;
+            height: 400px;
+            margin-bottom: 30px;
+            z-index: 5;
+        }
+
+        .graph-canvas {
+            position: absolute;
+            top: 0;
+            left: 50px;
+            right: 20px;
+            bottom: 40px;
+            background: linear-gradient(180deg, 
+                rgba(0, 20, 30, 0.3) 0%, 
+                rgba(0, 10, 20, 0.5) 100%);
+            border-left: 2px solid rgba(0, 255, 255, 0.4);
+            border-bottom: 2px solid rgba(255, 200, 0, 0.5);
+            box-shadow: 
+                inset 0 0 40px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(0, 255, 255, 0.1);
+        }
+
+        /* Grid lines */
+        .grid-horizontal, .grid-vertical {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+        }
+
+        .grid-line {
+            position: absolute;
+            background: rgba(0, 255, 255, 0.06);
+        }
+
+        .grid-horizontal .grid-line {
+            height: 1px;
+            left: 0;
+            right: 0;
+        }
+
+        .grid-vertical .grid-line {
+            width: 1px;
+            top: 0;
+            bottom: 0;
+        }
+
+        /* Y-axis labels */
+        .y-axis {
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 40px;
+            width: 50px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px 0;
+        }
+
+        .y-label {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            color: rgba(0, 255, 255, 0.7);
+            text-align: right;
+            padding-right: 10px;
+            text-shadow: 0 0 5px rgba(0, 255, 255, 0.5);
+        }
+
+        .y-axis-title {
+            position: absolute;
+            left: -5px;
+            top: 50%;
+            transform: translateY(-50%) rotate(-90deg);
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.8rem;
+            letter-spacing: 3px;
+            color: rgba(0, 255, 255, 0.8);
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+            white-space: nowrap;
+        }
+
+        /* X-axis */
+        .x-axis {
+            position: absolute;
+            left: 50px;
+            right: 20px;
+            bottom: 0;
+            height: 40px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding-top: 15px;
+        }
+
+        .x-axis-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 4px;
+            color: rgba(255, 200, 0, 0.8);
+            text-shadow: 0 0 10px rgba(255, 200, 0, 0.5);
+        }
+
+        /* SVG Graph */
+        .graph-svg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            overflow: visible;
+        }
+
+        /* Score line animations */
+        .score-line {
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            animation: drawLine 2s ease-out forwards;
+        }
+
+        @keyframes drawLine {
+            from { stroke-dashoffset: 2000; }
+            to { stroke-dashoffset: 0; }
+        }
+
+        .score-line-glow {
+            opacity: 0.4;
+            stroke-width: 12;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        /* Final score badges */
+        .final-score {
+            position: absolute;
+            padding: 4px 12px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border-radius: 4px;
+            animation: scorePopIn 0.5s ease-out 2s forwards;
+            opacity: 0;
+            transform: scale(0.5);
+            z-index: 20;
+        }
+
+        @keyframes scorePopIn {
+            0% { opacity: 0; transform: scale(0.5); }
+            50% { transform: scale(1.2); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .score-team1 {
+            background: linear-gradient(135deg, rgba(200, 255, 0, 0.2), rgba(200, 255, 0, 0.1));
+            border: 1px solid rgba(200, 255, 0, 0.8);
+            color: #c8ff00;
+            box-shadow: 0 0 20px rgba(200, 255, 0, 0.4), 0 0 40px rgba(200, 255, 0, 0.2);
+        }
+
+        .score-team2 {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.2), rgba(0, 255, 255, 0.1));
+            border: 1px solid rgba(0, 255, 255, 0.8);
+            color: #00ffff;
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.4), 0 0 40px rgba(0, 255, 255, 0.2);
+        }
+
+        .score-team3 {
+            background: linear-gradient(135deg, rgba(255, 140, 50, 0.2), rgba(255, 140, 50, 0.1));
+            border: 1px solid rgba(255, 140, 50, 0.8);
+            color: #ff8c32;
+            box-shadow: 0 0 20px rgba(255, 140, 50, 0.4), 0 0 40px rgba(255, 140, 50, 0.2);
+        }
+
+        /* Leader crown effect */
+        .leader-badge {
+            position: relative;
+        }
+
+        .leader-badge::before {
+            content: '👑';
+            position: absolute;
+            top: -20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 1rem;
+            animation: crownFloat 2s ease-in-out infinite;
+        }
+
+        @keyframes crownFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(-3px); }
+        }
+
+        /* Legend */
+        .legend {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 20px;
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .legend-item::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.1), 
+                transparent);
+            transition: left 0.5s ease;
+        }
+
+        .legend-item:hover::before {
+            left: 100%;
+        }
+
+        .legend-item:hover {
+            transform: translateY(-4px) scale(1.05);
+            border-color: rgba(255, 255, 255, 0.3);
+            box-shadow: 0 5px 20px rgba(0, 255, 255, 0.3);
+        }
+
+        .legend-item.leader {
+            border-color: rgba(200, 255, 0, 0.5);
+            box-shadow: 0 0 20px rgba(200, 255, 0, 0.2);
+        }
+
+        .legend-line {
+            width: 40px;
+            height: 4px;
+            border-radius: 2px;
+            position: relative;
+        }
+
+        .legend-line.team1 {
+            background: linear-gradient(90deg, #a8d400, #c8ff00);
+            box-shadow: 0 0 15px rgba(200, 255, 0, 0.8);
+        }
+
+        .legend-line.team2 {
+            background: linear-gradient(90deg, #00c8c8, #00ffff);
+            box-shadow: 0 0 15px rgba(0, 255, 255, 0.8);
+        }
+
+        .legend-line.team3 {
+            background: linear-gradient(90deg, #e07020, #ff8c32);
+            box-shadow: 0 0 15px rgba(255, 140, 50, 0.8);
+        }
+
+        .legend-icon {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.7rem;
+            font-weight: 700;
+        }
+
+        .legend-icon.team1 {
+            background: linear-gradient(135deg, rgba(200, 255, 0, 0.3), rgba(200, 255, 0, 0.1));
+            border: 2px solid #c8ff00;
+            color: #c8ff00;
+            box-shadow: 0 0 10px rgba(200, 255, 0, 0.5);
+        }
+
+        .legend-icon.team2 {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 255, 0.1));
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 10px rgba(0, 255, 255, 0.5);
+        }
+
+        .legend-icon.team3 {
+            background: linear-gradient(135deg, rgba(255, 140, 50, 0.3), rgba(255, 140, 50, 0.1));
+            border: 2px solid #ff8c32;
+            color: #ff8c32;
+            box-shadow: 0 0 10px rgba(255, 140, 50, 0.5);
+        }
+
+        .legend-text {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        .legend-text.team1 { color: #c8ff00; }
+        .legend-text.team2 { color: #00ffff; }
+        .legend-text.team3 { color: #ff8c32; }
+
+        .legend-score {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .legend-score.team1 { 
+            color: #c8ff00; 
+            text-shadow: 0 0 10px rgba(200, 255, 0, 0.8);
+        }
+        .legend-score.team2 { 
+            color: #00ffff; 
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        .legend-score.team3 { 
+            color: #ff8c32; 
+            text-shadow: 0 0 10px rgba(255, 140, 50, 0.8);
+        }
+
+        /* Ambient glow effects */
+        .ambient-glow {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.15;
+            pointer-events: none;
+            animation: ambientPulse 4s ease-in-out infinite;
+        }
+
+        @keyframes ambientPulse {
+            0%, 100% { opacity: 0.1; transform: scale(1); }
+            50% { opacity: 0.2; transform: scale(1.1); }
+        }
+
+        .ambient-cyan {
+            width: 300px;
+            height: 300px;
+            background: radial-gradient(circle, rgba(0, 255, 255, 0.6), transparent);
+            top: 20%;
+            left: 10%;
+        }
+
+        .ambient-yellow {
+            width: 250px;
+            height: 250px;
+            background: radial-gradient(circle, rgba(200, 255, 0, 0.6), transparent);
+            top: 10%;
+            right: 15%;
+            animation-delay: 1s;
+        }
+
+        .ambient-orange {
+            width: 200px;
+            height: 200px;
+            background: radial-gradient(circle, rgba(255, 140, 50, 0.4), transparent);
+            bottom: 20%;
+            left: 30%;
+            animation-delay: 2s;
+        }
+
+        /* Decorative star */
+        .deco-star {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 30px;
+            height: 30px;
+            z-index: 5;
+        }
+
+        .deco-star svg {
+            fill: rgba(255, 255, 255, 0.3);
+            filter: drop-shadow(0 0 5px rgba(255, 255, 255, 0.5));
+            animation: starTwinkle 3s ease-in-out infinite;
+        }
+
+        @keyframes starTwinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1) rotate(0deg); }
+            50% { opacity: 0.6; transform: scale(1.1) rotate(5deg); }
+        }
+
+        /* Bar Graph Styles */
+        .stats-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 30px;
+            position: relative;
+            z-index: 5;
+        }
+
+        .stats-header h2 {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.2rem;
+            font-weight: 700;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #00ffff, #00d4ff);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .bar-container {
+            position: relative;
+            z-index: 5;
+        }
+
+        .bar-item {
+            margin-bottom: 35px;
+            animation: barSlideIn 0.6s ease-out forwards;
+            opacity: 0;
+            cursor: pointer;
+            transition: transform 0.3s ease;
+        }
+
+        .bar-item:hover {
+            transform: translateX(10px);
+        }
+
+        .bar-item:nth-child(1) { animation-delay: 0.3s; }
+        .bar-item:nth-child(2) { animation-delay: 0.5s; }
+        .bar-item:nth-child(3) { animation-delay: 0.7s; }
+
+        @keyframes barSlideIn {
+            from { opacity: 0; transform: translateX(-30px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        .bar-label-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .bar-team-info {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .bar-rank {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 700;
+        }
+
+        .bar-rank.rank-1 {
+            background: linear-gradient(135deg, rgba(200, 255, 0, 0.3), rgba(200, 255, 0, 0.1));
+            border: 2px solid #c8ff00;
+            color: #c8ff00;
+            box-shadow: 0 0 15px rgba(200, 255, 0, 0.6);
+        }
+
+        .bar-rank.rank-2 {
+            background: linear-gradient(135deg, rgba(0, 255, 255, 0.3), rgba(0, 255, 255, 0.1));
+            border: 2px solid #00ffff;
+            color: #00ffff;
+            box-shadow: 0 0 12px rgba(0, 255, 255, 0.5);
+        }
+
+        .bar-rank.rank-3 {
+            background: linear-gradient(135deg, rgba(255, 140, 50, 0.3), rgba(255, 140, 50, 0.1));
+            border: 2px solid #ff8c32;
+            color: #ff8c32;
+            box-shadow: 0 0 12px rgba(255, 140, 50, 0.5);
+        }
+
+        .bar-team-name {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.95rem;
+            letter-spacing: 2px;
+            font-weight: 600;
+        }
+
+        .bar-team-name.team1 { color: #c8ff00; }
+        .bar-team-name.team2 { color: #00ffff; }
+        .bar-team-name.team3 { color: #ff8c32; }
+
+        .bar-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.4rem;
+            font-weight: 700;
+        }
+
+        .bar-value.team1 { 
+            color: #c8ff00; 
+            text-shadow: 0 0 10px rgba(200, 255, 0, 0.8);
+        }
+        .bar-value.team2 { 
+            color: #00ffff; 
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.8);
+        }
+        .bar-value.team3 { 
+            color: #ff8c32; 
+            text-shadow: 0 0 10px rgba(255, 140, 50, 0.8);
+        }
+
+        .bar-track {
+            height: 36px;
+            background: rgba(0, 0, 0, 0.5);
+            border-radius: 18px;
+            overflow: hidden;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            position: relative;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.5);
+            transition: all 0.3s ease;
+        }
+
+        .bar-item:hover .bar-track {
+            box-shadow: 
+                inset 0 2px 10px rgba(0, 0, 0, 0.5),
+                0 0 20px rgba(0, 255, 255, 0.3);
+            border-color: rgba(0, 255, 255, 0.3);
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 18px;
+            position: relative;
+            overflow: hidden;
+            transition: width 1s ease-out;
+            animation: barGrow 1.5s ease-out forwards;
+        }
+
+        @keyframes barGrow {
+            from { width: 0 !important; }
+        }
+
+        .bar-fill::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(255, 255, 255, 0.4), 
+                transparent);
+            animation: shimmerBar 2.5s infinite;
+            animation-delay: 1.5s;
+        }
+
+        @keyframes shimmerBar {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        .bar-fill.team1 {
+            background: linear-gradient(90deg, 
+                rgba(168, 212, 0, 0.5), 
+                rgba(200, 255, 0, 0.9),
+                rgba(168, 212, 0, 0.5));
+            box-shadow: 
+                inset 0 2px 15px rgba(200, 255, 0, 0.7),
+                0 0 25px rgba(200, 255, 0, 0.5);
+        }
+
+        .bar-fill.team2 {
+            background: linear-gradient(90deg, 
+                rgba(0, 200, 200, 0.5), 
+                rgba(0, 255, 255, 0.9),
+                rgba(0, 200, 200, 0.5));
+            box-shadow: 
+                inset 0 2px 15px rgba(0, 255, 255, 0.7),
+                0 0 25px rgba(0, 255, 255, 0.5);
+        }
+
+        .bar-fill.team3 {
+            background: linear-gradient(90deg, 
+                rgba(224, 112, 32, 0.5), 
+                rgba(255, 140, 50, 0.9),
+                rgba(224, 112, 32, 0.5));
+            box-shadow: 
+                inset 0 2px 15px rgba(255, 140, 50, 0.7),
+                0 0 25px rgba(255, 140, 50, 0.5);
+        }
+
+        .bar-fill::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 50%;
+            background: linear-gradient(180deg, 
+                rgba(255, 255, 255, 0.4), 
+                transparent);
+            border-radius: 18px 18px 0 0;
+        }
+
+        .crown-icon {
+            position: absolute;
+            top: 50%;
+            right: 10px;
+            transform: translateY(-50%);
+            font-size: 1.3rem;
+            animation: crownBounce 1.5s ease-in-out infinite;
+            filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.9));
+        }
+
+        @keyframes crownBounce {
+            0%, 100% { transform: translateY(-50%) rotate(-5deg); }
+            50% { transform: translateY(-55%) rotate(5deg); }
+        }
+
+        /* Additional Stats */
+        .additional-stats {
+            margin-top: 35px;
+            padding-top: 30px;
+            border-top: 1px solid rgba(0, 255, 255, 0.2);
+            position: relative;
+            z-index: 5;
+        }
+
+        .stat-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+            animation: fadeInUp 0.6s ease-out forwards;
+            opacity: 0;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            position: relative;
+        }
+
+        .stat-row::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 0;
+            height: 2px;
+            background: linear-gradient(90deg, #00ffff, transparent);
+            transition: width 0.3s ease;
+        }
+
+        .stat-row:hover::before {
+            width: 100%;
+        }
+
+        .stat-row:hover {
+            padding-left: 10px;
+            background: rgba(0, 255, 255, 0.05);
+        }
+
+        .stat-row:nth-child(1) { animation-delay: 1s; }
+        .stat-row:nth-child(2) { animation-delay: 1.1s; }
+        .stat-row:nth-child(3) { animation-delay: 1.2s; }
+
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .stat-label {
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+            letter-spacing: 1px;
+        }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: 600;
+            color: #00ffff;
+            text-shadow: 0 0 10px rgba(0, 255, 255, 0.7);
+            transition: all 0.3s ease;
+        }
+
+        .stat-row:hover .stat-value {
+            transform: scale(1.15);
+            text-shadow: 0 0 20px rgba(0, 255, 255, 1);
+        }
+
+        /* Data point hover effect */
+        .graph-svg circle {
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        /* Score ripple effect */
+        .score-ripple {
+            position: absolute;
+            border-radius: 50%;
+            border: 2px solid;
+            animation: rippleExpand 2s ease-out infinite;
+            pointer-events: none;
+        }
+
+        @keyframes rippleExpand {
+            0% {
+                width: 20px;
+                height: 20px;
+                opacity: 1;
+            }
+            100% {
+                width: 80px;
+                height: 80px;
+                opacity: 0;
+            }
+        }
+
+        /* Energy beam effect */
+        .energy-beam {
+            position: absolute;
+            height: 2px;
+            background: linear-gradient(90deg, 
+                transparent, 
+                rgba(0, 255, 255, 0.8), 
+                transparent);
+            animation: beamSweep 4s infinite;
+            pointer-events: none;
+            z-index: 15;
+        }
+
+        @keyframes beamSweep {
+            0% {
+                left: -100%;
+                width: 50%;
+            }
+            50% {
+                left: 50%;
+                width: 50%;
+            }
+            100% {
+                left: 150%;
+                width: 50%;
+            }
+        }
+
+        /* Glitch effect on hover */
+        .glitch-text {
+            position: relative;
+            display: inline-block;
+        }
+
+        .glitch-text:hover::before,
+        .glitch-text:hover::after {
+            content: attr(data-text);
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .glitch-text:hover::before {
+            animation: glitch 0.3s infinite;
+            color: #00ffff;
+            z-index: -1;
+        }
+
+        .glitch-text:hover::after {
+            animation: glitch 0.3s infinite reverse;
+            color: #ff00ff;
+            z-index: -2;
+        }
+
+        @keyframes glitch {
+            0% {
+                transform: translate(0);
+            }
+            20% {
+                transform: translate(-2px, 2px);
+            }
+            40% {
+                transform: translate(-2px, -2px);
+            }
+            60% {
+                transform: translate(2px, 2px);
+            }
+            80% {
+                transform: translate(2px, -2px);
+            }
+            100% {
+                transform: translate(0);
+            }
+        }
+
+        /* Hologram scan line */
+        .hologram-scan {
+            position: absolute;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(180deg, 
+                transparent, 
+                rgba(0, 255, 255, 0.5), 
+                transparent);
+            animation: scanMove 4s linear infinite;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        @keyframes scanMove {
+            0% {
+                top: 0;
+            }
+            100% {
+                top: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background effects -->
+    <div class="bg-particles" id="particles"></div>
+    <div class="lightning-flash"></div>
+
+    <div class="container">
+        <div class="dashboard-grid">
+            <!-- Line Graph Panel -->
+            <div class="graph-panel">
+                <!-- Hologram scan effect -->
+                <div class="hologram-scan"></div>
+                <!-- Energy beam effect -->
+                <div class="energy-beam" style="top: 30%;"></div>
+                <div class="energy-beam" style="top: 60%; animation-delay: 2s;"></div>
+
+                <!-- Corner decorations -->
+                <div class="corner corner-tl"></div>
+                <div class="corner corner-tr"></div>
+                <div class="corner corner-bl"></div>
+                <div class="corner corner-br"></div>
+
+                <!-- Ambient glow effects -->
+                <div class="ambient-glow ambient-cyan"></div>
+                <div class="ambient-glow ambient-yellow"></div>
+                <div class="ambient-glow ambient-orange"></div>
+
+                <!-- Header -->
+                <div class="header">
+                    <div class="header-icon">
+                        <svg viewBox="0 0 24 24">
+                            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+                        </svg>
+                    </div>
+                    <h1 class="glitch-text" data-text="LIVE SCORE PROGRESSION">LIVE SCORE PROGRESSION</h1>
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        LIVE
+                    </div>
+                </div>
+
+                <!-- Graph Container -->
+                <div class="graph-container">
+                    <!-- Y-Axis -->
+                    <div class="y-axis-title">SCORE</div>
+                    <div class="y-axis">
+                        <div class="y-label">600</div>
+                        <div class="y-label">500</div>
+                        <div class="y-label">400</div>
+                        <div class="y-label">300</div>
+                        <div class="y-label">200</div>
+                        <div class="y-label">100</div>
+                        <div class="y-label">0</div>
+                    </div>
+
+                    <!-- Graph Canvas -->
+                    <div class="graph-canvas">
+                        <!-- Grid lines -->
+                        <div class="grid-horizontal">
+                            <div class="grid-line" style="top: 0%"></div>
+                            <div class="grid-line" style="top: 16.67%"></div>
+                            <div class="grid-line" style="top: 33.33%"></div>
+                            <div class="grid-line" style="top: 50%"></div>
+                            <div class="grid-line" style="top: 66.67%"></div>
+                            <div class="grid-line" style="top: 83.33%"></div>
+                        </div>
+                        <div class="grid-vertical">
+                            <div class="grid-line" style="left: 20%"></div>
+                            <div class="grid-line" style="left: 40%"></div>
+                            <div class="grid-line" style="left: 60%"></div>
+                            <div class="grid-line" style="left: 80%"></div>
+                        </div>
+
+                        <!-- SVG Graph -->
+                        <svg class="graph-svg" viewBox="0 0 1000 360" preserveAspectRatio="none">
+                            <defs>
+                                <!-- Gradient definitions -->
+                                <linearGradient id="gradYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#a8d400;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#c8ff00;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#e0ff40;stop-opacity:1" />
+                                </linearGradient>
+                                <linearGradient id="gradCyan" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#008888;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#00d4d4;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#00ffff;stop-opacity:1" />
+                                </linearGradient>
+                                <linearGradient id="gradOrange" x1="0%" y1="0%" x2="100%" y2="0%">
+                                    <stop offset="0%" style="stop-color:#cc5500;stop-opacity:1" />
+                                    <stop offset="50%" style="stop-color:#ff8c32;stop-opacity:1" />
+                                    <stop offset="100%" style="stop-color:#ffaa55;stop-opacity:1" />
+                                </linearGradient>
+
+                                <!-- Glow filters -->
+                                <filter id="glowYellow" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="4" result="blur"/>
+                                    <feFlood flood-color="#c8ff00" flood-opacity="0.8"/>
+                                    <feComposite in2="blur" operator="in"/>
+                                    <feMerge>
+                                        <feMergeNode/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                                <filter id="glowCyan" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                                    <feFlood flood-color="#00ffff" flood-opacity="0.7"/>
+                                    <feComposite in2="blur" operator="in"/>
+                                    <feMerge>
+                                        <feMergeNode/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                                <filter id="glowOrange" x="-50%" y="-50%" width="200%" height="200%">
+                                    <feGaussianBlur stdDeviation="3" result="blur"/>
+                                    <feFlood flood-color="#ff8c32" flood-opacity="0.7"/>
+                                    <feComposite in2="blur" operator="in"/>
+                                    <feMerge>
+                                        <feMergeNode/>
+                                        <feMergeNode in="SourceGraphic"/>
+                                    </feMerge>
+                                </filter>
+                            </defs>
+
+                            <!-- Background glow traces -->
+                            <polyline 
+                                points="0,360 80,330 160,320 240,310 320,260 400,240 480,220 560,180 640,160 720,130 800,90 880,50 960,20"
+                                fill="none"
+                                stroke="rgba(200, 255, 0, 0.15)"
+                                stroke-width="20"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="score-line-glow"/>
+                            
+                            <polyline 
+                                points="0,360 80,295 160,280 240,275 320,260 400,230 480,200 560,170 640,150 720,120 800,85 880,55 960,25"
+                                fill="none"
+                                stroke="rgba(0, 255, 255, 0.12)"
+                                stroke-width="18"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="score-line-glow"/>
+                            
+                            <polyline 
+                                points="0,360 80,310 160,295 240,285 320,260 400,235 480,210 560,185 640,155 720,130 800,100 880,75 960,55"
+                                fill="none"
+                                stroke="rgba(255, 140, 50, 0.12)"
+                                stroke-width="16"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                class="score-line-glow"/>
+
+                            <!-- Main score lines -->
+                            <polyline 
+                                points="0,360 80,310 160,295 240,285 320,260 400,235 480,210 560,185 640,155 720,130 800,100 880,75 960,55"
+                                fill="none"
+                                stroke="url(#gradOrange)"
+                                stroke-width="3.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                filter="url(#glowOrange)"
+                                class="score-line"
+                                style="stroke-dasharray: 2000; stroke-dashoffset: 2000;"/>
+
+                            <polyline 
+                                points="0,360 80,295 160,280 240,275 320,260 400,230 480,200 560,170 640,150 720,120 800,85 880,55 960,25"
+                                fill="none"
+                                stroke="url(#gradCyan)"
+                                stroke-width="3.5"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                filter="url(#glowCyan)"
+                                class="score-line"
+                                style="stroke-dasharray: 2000; stroke-dashoffset: 2000; animation-delay: 0.2s;"/>
+
+                            <polyline 
+                                points="0,360 80,330 160,320 240,310 320,260 400,240 480,220 560,180 640,160 720,130 800,90 880,50 960,20"
+                                fill="none"
+                                stroke="url(#gradYellow)"
+                                stroke-width="4"
+                                stroke-linecap="round"
+                                stroke-linejoin="round"
+                                filter="url(#glowYellow)"
+                                class="score-line"
+                                style="stroke-dasharray: 2000; stroke-dashoffset: 2000; animation-delay: 0.4s;"/>
+
+                            <!-- End points with pulsing effect -->
+                            <g class="end-points">
+                                <circle cx="960" cy="20" r="6" fill="#c8ff00" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2s" fill="freeze"/>
+                                    <animate attributeName="r" values="6;8;6" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                                </circle>
+                                <circle cx="960" cy="20" r="12" fill="none" stroke="#c8ff00" stroke-width="2" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="0.5" dur="0.5s" begin="2s" fill="freeze"/>
+                                    <animate attributeName="r" values="12;18;12" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                                    <animate attributeName="opacity" values="0.5;0.2;0.5" dur="1.5s" begin="2s" repeatCount="indefinite"/>
+                                </circle>
+
+                                <circle cx="960" cy="25" r="5" fill="#00ffff" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2.2s" fill="freeze"/>
+                                    <animate attributeName="r" values="5;7;5" dur="1.5s" begin="2.2s" repeatCount="indefinite"/>
+                                </circle>
+                                <circle cx="960" cy="25" r="10" fill="none" stroke="#00ffff" stroke-width="1.5" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="0.4" dur="0.5s" begin="2.2s" fill="freeze"/>
+                                    <animate attributeName="r" values="10;15;10" dur="1.5s" begin="2.2s" repeatCount="indefinite"/>
+                                </circle>
+
+                                <circle cx="960" cy="55" r="4" fill="#ff8c32" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="1" dur="0.5s" begin="2.4s" fill="freeze"/>
+                                    <animate attributeName="r" values="4;6;4" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                                </circle>
+                                <circle cx="960" cy="55" r="8" fill="none" stroke="#ff8c32" stroke-width="1.5" opacity="0">
+                                    <animate attributeName="opacity" from="0" to="0.4" dur="0.5s" begin="2.4s" fill="freeze"/>
+                                    <animate attributeName="r" values="8;12;8" dur="1.5s" begin="2.4s" repeatCount="indefinite"/>
+                                </circle>
+                            </g>
+
+                            <!-- Overtake highlight points -->
+                            <g class="overtake-points">
+                                <circle cx="480" cy="220" r="0" fill="transparent">
+                                    <animate attributeName="r" values="0;25;0" dur="2s" begin="1.2s" fill="freeze"/>
+                                </circle>
+                                <circle cx="480" cy="220" r="0" fill="rgba(200, 255, 0, 0.3)">
+                                    <animate attributeName="r" values="0;15;0" dur="1.5s" begin="1.2s" fill="freeze"/>
+                                </circle>
+                            </g>
+                        </svg>
+
+                        <!-- Final score badges -->
+                        <div class="final-score score-team1 leader-badge" style="right: -50px; top: calc(5.5% - 12px);">591</div>
+                        <div class="final-score score-team2" style="right: -50px; top: calc(7% + 8px);">591</div>
+                        <div class="final-score score-team3" style="right: -50px; top: calc(15% + 5px);">571</div>
+                    </div>
+
+                    <!-- X-Axis -->
+                    <div class="x-axis">
+                        <span class="x-axis-title">TIME</span>
+                    </div>
+                </div>
+
+                <!-- Legend -->
+                <div class="legend">
+                    <div class="legend-item leader">
+                        <div class="legend-icon team1">1</div>
+                        <div class="legend-line team1"></div>
+                        <span class="legend-text team1">#1 A</span>
+                        <span class="legend-score team1">591</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon team2">2</div>
+                        <div class="legend-line team2"></div>
+                        <span class="legend-text team2">#2 B</span>
+                        <span class="legend-score team2">591</span>
+                    </div>
+                    <div class="legend-item">
+                        <div class="legend-icon team3">3</div>
+                        <div class="legend-line team3"></div>
+                        <span class="legend-text team3">#3 O</span>
+                        <span class="legend-score team3">571</span>
+                    </div>
+                </div>
+
+                <!-- Decorative star -->
+                <div class="deco-star">
+                    <svg viewBox="0 0 24 24">
+                        <polygon points="12,2 15,9 22,9 17,14 19,22 12,18 5,22 7,14 2,9 9,9"/>
+                    </svg>
+                </div>
+            </div>
+
+            <!-- Bar Graph Stats Panel -->
+            <div class="stats-panel">
+                <!-- Hologram scan effect -->
+                <div class="hologram-scan" style="animation-delay: 2s;"></div>
+
+                <!-- Corner decorations -->
+                <div class="corner corner-tl"></div>
+                <div class="corner corner-tr"></div>
+                <div class="corner corner-bl"></div>
+                <div class="corner corner-br"></div>
+
+                <div class="stats-header">
+                    <h2 class="glitch-text" data-text="FINAL STANDINGS">FINAL STANDINGS</h2>
+                </div>
+
+                <div class="bar-container">
+                    <!-- Team 1 - Leader -->
+                    <div class="bar-item">
+                        <div class="bar-label-row">
+                            <div class="bar-team-info">
+                                <div class="bar-rank rank-1">1</div>
+                                <span class="bar-team-name team1">TEAM ALPHA</span>
+                            </div>
+                            <span class="bar-value team1">591</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill team1" style="width: 100%;">
+                                <div class="crown-icon">👑</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Team 2 -->
+                    <div class="bar-item">
+                        <div class="bar-label-row">
+                            <div class="bar-team-info">
+                                <div class="bar-rank rank-2">2</div>
+                                <span class="bar-team-name team2">TEAM BETA</span>
+                            </div>
+                            <span class="bar-value team2">591</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill team2" style="width: 100%;"></div>
+                        </div>
+                    </div>
+
+                    <!-- Team 3 -->
+                    <div class="bar-item">
+                        <div class="bar-label-row">
+                            <div class="bar-team-info">
+                                <div class="bar-rank rank-3">3</div>
+                                <span class="bar-team-name team3">TEAM OMEGA</span>
+                            </div>
+                            <span class="bar-value team3">571</span>
+                        </div>
+                        <div class="bar-track">
+                            <div class="bar-fill team3" style="width: 96.6%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="additional-stats">
+                    <div class="stat-row">
+                        <span class="stat-label">Match Duration</span>
+                        <span class="stat-value">42:16</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Total Eliminations</span>
+                        <span class="stat-value">1,753</span>
+                    </div>
+                    <div class="stat-row">
+                        <span class="stat-label">Peak Viewers</span>
+                        <span class="stat-value">87.2K</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Create background particles
+        function createBackgroundParticles() {
+            const container = document.getElementById('particles');
+            const particleCount = 50;
+            
+            for (let i = 0; i < particleCount; i++) {
+                const particle = document.createElement('div');
+                particle.className = 'particle';
+                particle.style.left = Math.random() * 100 + '%';
+                particle.style.animationDelay = Math.random() * 20 + 's';
+                particle.style.animationDuration = (15 + Math.random() * 10) + 's';
+                
+                // Random colors
+                const colors = [
+                    'rgba(0, 255, 255, 0.5)',
+                    'rgba(200, 255, 0, 0.5)',
+                    'rgba(255, 140, 50, 0.5)'
+                ];
+                particle.style.background = colors[Math.floor(Math.random() * colors.length)];
+                
+                container.appendChild(particle);
+            }
+        }
+
+        // Add ripple effects to final scores
+        function createScoreRipples() {
+            const scores = document.querySelectorAll('.final-score');
+            scores.forEach((score, index) => {
+                setInterval(() => {
+                    const ripple = document.createElement('div');
+                    ripple.className = 'score-ripple';
+                    ripple.style.borderColor = index === 0 ? '#c8ff00' : 
+                                               index === 1 ? '#00ffff' : '#ff8c32';
+                    ripple.style.left = '50%';
+                    ripple.style.top = '50%';
+                    ripple.style.transform = 'translate(-50%, -50%)';
+                    score.style.position = 'relative';
+                    score.appendChild(ripple);
+                    
+                    setTimeout(() => ripple.remove(), 2000);
+                }, 3000 + index * 500);
+            });
+        }
+
+        // Add interactive hover effects to legend items
+        function setupLegendInteractions() {
+            const legendItems = document.querySelectorAll('.legend-item');
+            legendItems.forEach((item, index) => {
+                item.addEventListener('mouseenter', () => {
+                    // Highlight corresponding line in graph
+                    const lines = document.querySelectorAll('.score-line');
+                    lines[lines.length - 1 - index].style.strokeWidth = '6';
+                    lines[lines.length - 1 - index].style.transition = 'stroke-width 0.3s ease';
+                });
+                
+                item.addEventListener('mouseleave', () => {
+                    const lines = document.querySelectorAll('.score-line');
+                    lines[lines.length - 1 - index].style.strokeWidth = index === 0 ? '4' : '3.5';
+                });
+            });
+        }
+
+        // Add click animation to bar items
+        function setupBarInteractions() {
+            const barItems = document.querySelectorAll('.bar-item');
+            barItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const fill = item.querySelector('.bar-fill');
+                    fill.style.animation = 'none';
+                    setTimeout(() => {
+                        fill.style.animation = 'barGrow 1s ease-out forwards';
+                    }, 10);
+                });
+            });
+        }
+
+        // Lightning flash effect trigger
+        function triggerLightning() {
+            const lightning = document.querySelector('.lightning-flash');
+            const x = Math.random() * 100;
+            const y = Math.random() * 100;
+            lightning.style.setProperty('--x', x + '%');
+            lightning.style.setProperty('--y', y + '%');
+        }
+
+        // Animate numbers counting up
+        function animateValue(element, start, end, duration) {
+            let startTimestamp = null;
+            const step = (timestamp) => {
+                if (!startTimestamp) startTimestamp = timestamp;
+                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
+                const value = Math.floor(progress * (end - start) + start);
+                element.textContent = value.toLocaleString();
+                if (progress < 1) {
+                    window.requestAnimationFrame(step);
+                }
+            };
+            window.requestAnimationFrame(step);
+        }
+
+        // Count up statistics
+        function animateStatistics() {
+            setTimeout(() => {
+                const statValues = document.querySelectorAll('.stat-value');
+                if (statValues[0]) {
+                    statValues[0].textContent = '00:00';
+                    let seconds = 0;
+                    const interval = setInterval(() => {
+                        seconds++;
+                        const mins = Math.floor(seconds / 60);
+                        const secs = seconds % 60;
+                        statValues[0].textContent = 
+                            String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                        if (seconds >= 2536) clearInterval(interval); // 42:16
+                    }, 1);
+                }
+                if (statValues[1]) {
+                    animateValue(statValues[1], 0, 1753, 2000);
+                }
+                if (statValues[2]) {
+                    let current = 0;
+                    const interval = setInterval(() => {
+                        current += Math.random() * 5000;
+                        if (current >= 87200) {
+                            current = 87200;
+                            clearInterval(interval);
+                        }
+                        statValues[2].textContent = (current / 1000).toFixed(1) + 'K';
+                    }, 50);
+                }
+            }, 1000);
+        }
+
+        // Add dynamic particles on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            createBackgroundParticles();
+            
+            const graphCanvas = document.querySelector('.graph-canvas');
+            
+            // Create victory particles at final positions after animation
+            setTimeout(() => {
+                createVictoryParticles(graphCanvas, '95%', '5%', '#c8ff00');
+                createScoreRipples();
+            }, 2500);
+
+            // Setup interactions
+            setupLegendInteractions();
+            setupBarInteractions();
+            animateStatistics();
+
+            // Add subtle energy pulse to lines
+            const lines = document.querySelectorAll('.score-line');
+            lines.forEach((line, index) => {
+                line.style.animationDelay = `${index * 0.15}s`;
+            });
+
+            // Trigger lightning periodically
+            setInterval(triggerLightning, 8000);
+        });
+
+        function createVictoryParticles(container, x, y, color) {
+            for (let i = 0; i < 12; i++) {
+                const particle = document.createElement('div');
+                particle.style.position = 'absolute';
+                particle.style.left = x;
+                particle.style.top = y;
+                particle.style.width = '4px';
+                particle.style.height = '4px';
+                particle.style.borderRadius = '50%';
+                particle.style.background = color;
+                particle.style.boxShadow = `0 0 6px ${color}`;
+                particle.style.pointerEvents = 'none';
+                
+                const angle = (Math.PI * 2 / 12) * i;
+                const distance = 30 + Math.random() * 40;
+                const tx = Math.cos(angle) * distance;
+                const ty = Math.sin(angle) * distance;
+                
+                particle.style.animation = `particleFly${i} 2s ease-out forwards`;
+                
+                const styleSheet = document.styleSheets[0];
+                const keyframes = `
+                    @keyframes particleFly${i} {
+                        0% { opacity: 1; transform: translate(0, 0) scale(1); }
+                        100% { opacity: 0; transform: translate(${tx}px, ${ty}px) scale(0); }
+                    }
+                `;
+                styleSheet.insertRule(keyframes, styleSheet.cssRules.length);
+                
+                container.appendChild(particle);
+                
+                setTimeout(() => particle.remove(), 2000);
+            }
+        }
+
+        // Simulate live updates (for demo purposes)
+        function simulateLiveUpdate() {
+            const indicator = document.querySelector('.live-dot');
+            indicator.style.animation = 'none';
+            indicator.offsetHeight;
+            indicator.style.animation = 'pulse 0.3s ease-out 3';
+        }
+
+        setInterval(simulateLiveUpdate, 5000);
+    </script>
+</body>
+</html>
+
+
+
+We can have sound effects for almost all the movements/actions in the website,
