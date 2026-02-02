@@ -2,7 +2,7 @@ import { useRef, useCallback } from "react";
 import { gsap } from "gsap";
 
 const ZoomIntro = ({
-  scale = 3,
+  scale = 2.5,
   duration = 0.9,
   hold = 0.4,
   ease = "power3.inOut",
@@ -23,7 +23,7 @@ const ZoomIntro = ({
 
       const rect = el.getBoundingClientRect();
 
-      // 🔥 VISIBLE WINDOW CENTER (scroll-aware)
+      //  VISIBLE WINDOW CENTER (scroll-aware)
       const centerX = window.scrollX + window.innerWidth / 2;
       const centerY = window.scrollY + window.innerHeight / 2;
 

@@ -109,6 +109,42 @@ code, pre, .font-mono {
 .glitch-text {
     animation: glitch 0.3s ease-in-out;
 }
+/*Title effect*/
+
+.glitchtitle {
+    font-size: 8rem;
+    font-weight: 900;
+    letter-spacing: 8px;
+    text-shadow: 
+        0 0 10px #00ff41,
+        0 0 20px #00ff41,
+        0 0 40px #00ff41;
+    animation: titleGlitch 2s ease-in-out infinite;
+    margin-bottom: 20px;
+}
+
+@keyframes titleGlitch {
+    0%, 90%, 100% { 
+        transform: translate(0);
+        filter: hue-rotate(0deg);
+    }
+    10% { 
+        transform: translate(-2px, 2px);
+        filter: hue-rotate(90deg);
+    }
+    20% { 
+        transform: translate(2px, -2px);
+        filter: hue-rotate(180deg);
+    }
+    30% { 
+        transform: translate(-2px, -2px);
+        filter: hue-rotate(270deg);
+    }
+    40% { 
+        transform: translate(2px, 2px);
+        filter: hue-rotate(360deg);
+    }
+}
 
 /* Neon glow effects */
 .neon-green {

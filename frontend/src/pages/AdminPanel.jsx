@@ -12,61 +12,6 @@ import useWebSocket from "@/hooks/useWebSocket";
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:8001';
 const API = `${BACKEND_URL}/api`;
 
-// Built-in strategy templates (3-player format)
-const STRATEGY_TEMPLATES = [
-  {
-    name: 'Tit for Tat',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    # Cooperate first, then cooperate only if BOTH opponents cooperated
-    if not opponent1_history:
-        return 'C'
-    if opponent1_history[-1] == 'C' and opponent2_history[-1] == 'C':
-        return 'C'
-    return 'D'`
-  },
-  {
-    name: 'Grudger',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    # Cooperate until any opponent defects, then always defect
-    if 'D' in opponent1_history or 'D' in opponent2_history:
-        return 'D'
-    return 'C'`
-  },
-  {
-    name: 'Pavlov',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    # Win-Stay, Lose-Shift: Switch if we got a bad outcome
-    if not my_history:
-        return 'C'
-    # Good outcome = both opponents cooperated last round
-    if opponent1_history[-1] == 'C' and opponent2_history[-1] == 'C':
-        return my_history[-1]
-    # Bad outcome, switch
-    return 'D' if my_history[-1] == 'C' else 'C'`
-  },
-  {
-    name: 'Majority Rules',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    # Copy what majority did last round
-    if not opponent1_history:
-        return 'C'
-    last_moves = [opponent1_history[-1], opponent2_history[-1]]
-    if last_moves.count('C') >= 1:
-        return 'C'
-    return 'D'`
-  },
-  {
-    name: 'Always Cooperate',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    return 'C'`
-  },
-  {
-    name: 'Always Defect',
-    code: `def strategy(opponent1_history, opponent2_history, my_history):
-    return 'D'`
-  },
-];
-
 const AdminPanel = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -459,15 +404,6 @@ const AdminPanel = () => {
                 <div className="space-y-2">
                   <span className="text-sm text-muted-foreground">Templates:</span>
                   <div className="flex flex-wrap gap-2">
-                    {STRATEGY_TEMPLATES.map((s, idx) => (
-                      <button
-                        key={`builtin-${idx}`}
-                        onClick={() => setNewTeam({ ...newTeam, strategy_code: s.code })}
-                        className="text-xs px-3 py-1.5 bg-accent hover:bg-primary hover:text-black transition-colors rounded border border-primary/30"
-                      >
-                        {s.name}
-                      </button>
-                    ))}
                     {sampleStrategies.map((s, idx) => (
                       <button
                         key={`api-${idx}`}
